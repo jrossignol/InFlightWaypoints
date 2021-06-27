@@ -60,9 +60,9 @@ namespace WaypointManager
         public static bool hudHeading = false;
         public static bool hudAngle = false;
 
-        public static bool useStockToolbar = true;
-
         public static float opacity = 1.0f;
+
+        public static float scaling = 1.0f;
 
         public static Texture2D toolbarIcon;
         public static Texture2D addWaypointIcon;
@@ -88,8 +88,8 @@ namespace WaypointManager
             configNode.AddValue("hudHeading", hudHeading);
             configNode.AddValue("hudAngle", hudAngle);
             configNode.AddValue("displayDecimal", displayDecimal);
-            configNode.AddValue("useStockToolbar", useStockToolbar);
             configNode.AddValue("opacity", opacity);
+            configNode.AddValue("scaling", scaling);
 
             configNode.Save(ConfigFileName,
                 "Waypoint Manager Configuration File\r\n" +
@@ -128,16 +128,8 @@ namespace WaypointManager
             hudAngle = configNode.HasValue("hudAngle") ? Convert.ToBoolean(configNode.GetValue("hudAngle")) : false;
             opacity = configNode.HasValue("opacity") ? (float)Convert.ToDouble(configNode.GetValue("opacity")) : 1.0f;
             displayDecimal = configNode.HasValue("displayDecimal") ? Convert.ToBoolean(configNode.GetValue("displayDecimal")) : false;
-            if (configNode.HasValue("useStockToolbar"))
-            {
-                useStockToolbar = Convert.ToBoolean(configNode.GetValue("useStockToolbar"));
-            }
 
-            // If toolbar isn't installed, always use stock toolbar
-            if (!ToolbarManager.ToolbarAvailable)
-            {
-                useStockToolbar = true;
-            }
+            scaling = configNode.HasValue("scaling") ? (float)Convert.ToDouble(configNode.GetValue("scaling")) : 1.0f;
         }
 
         private static T GetEnumValue<T>(this ConfigNode configNode, string name)

@@ -1,10 +1,13 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
 using FinePrint;
 using FinePrint.Utilities;
+using ClickThroughFix;
+using ToolbarControl_NS;
 
 namespace WaypointManager
 {
@@ -17,15 +20,23 @@ namespace WaypointManager
 
         public static List<string> customIcons = new List<string>();
 
-        private const float ICON_PICKER_WIDTH = 302;
+        internal const float ICON_PICKER_WIDTH = 302;
         private enum WindowMode
         {
             None,
             Add,
             Edit,
+            Edit_Stock,
             Delete
         }
-        
+        private static string[] windowModeStr = {
+            "None",
+            "Add",
+            "Edit",
+            "Edit Stock",
+            "Delete"
+        };
+
         // So, what is this random list of numbers?  It's a side effect from the awesome
         // design decision in KSP/FinePrint to make stuff based on a random seed.  There
         // is no way to externally provide a color for the waypoint, so instead we provide
@@ -85,7 +96,7 @@ namespace WaypointManager
         private static GUIContent[] colors = null;
 
         private static bool showExportDialog = false;
-        
+
         private static bool mapLocationMode = false;
 
         private static int selectedIcon = 0;
@@ -114,7 +125,7 @@ namespace WaypointManager
                 AddWaypoint(0.0, 0.0, 0.0);
             }
         }
-        
+
         /// <summary>
         /// Interface for showing the add waypoint dialog.
         /// </summary>
@@ -157,14 +168,17 @@ namespace WaypointManager
         /// <summary>
         /// Interface for showing the edit waypoint dialog.
         /// </summary>
-        public static void EditWaypoint(Waypoint waypoint)
+        public static void EditWaypoint(Waypoint waypoint, bool stock = false)
         {
             if (windowMode == WindowMode.None)
             {
                 wpWindowPos = new Rect((Screen.width - wpWindowPos.width) / 2.0f, (Screen.height - wpWindowPos.height) / 2.0f - 100f, wpWindowPos.width, wpWindowPos.height);
             }
 
-            windowMode = WindowMode.Edit;
+            if (stock)
+                windowMode = WindowMode.Edit_Stock;
+            else
+                windowMode = WindowMode.Edit;
             selectedWaypoint = waypoint;
 
             template.name = waypoint.name;
@@ -220,10 +234,21 @@ namespace WaypointManager
                 foreach (ConfigNode configNode in iconConfig)
                 {
                     string dir = configNode.GetValue("url");
+                    if (Directory.Exists("GameData/" + dir))
+                    {
+                        foreach (var str in Directory.GetFiles("GameData/" + dir))
+                        {
+                            var icon = new Texture2D(2, 2);
+                            ToolbarControl.LoadImageFromFile(ref icon, str);
+                            content.Add(new GUIContent(icon, str));
+                        }
+                    }
+#if false
                     foreach (GameDatabase.TextureInfo texInfo in GameDatabase.Instance.databaseTexture.Where(t => t.name.StartsWith(dir)))
                     {
                         content.Add(new GUIContent(texInfo.texture, texInfo.name));
                     }
+#endif
                 }
 
                 // Add custom icons
@@ -280,15 +305,16 @@ namespace WaypointManager
                 disabledText.normal.textColor = Color.gray;
             }
 
-            if (WaypointManager.Instance != null && WaypointManager.Instance.visible)
+
+            if (WaypointManager.Instance != null && WaypointManager.Instance.visible && !ImportExport.helpDialogVisible)
             {
                 if (windowMode != WindowMode.None && windowMode != WindowMode.Delete)
                 {
-                    wpWindowPos = GUILayout.Window(
+                    wpWindowPos = ClickThruBlocker.GUILayoutWindow(
                         typeof(WaypointManager).FullName.GetHashCode() + 2,
                         wpWindowPos,
                         WindowGUI,
-                        windowMode.ToString() + " Waypoint",
+                        windowModeStr[(int)windowMode] + " Waypoint",
                         GUILayout.Height(1), GUILayout.ExpandHeight(true));
 
                     // Add the close icon
@@ -305,7 +331,7 @@ namespace WaypointManager
                             iconPickerPosition = new Rect((Screen.width - ICON_PICKER_WIDTH) / 2.0f, wpWindowPos.yMax, ICON_PICKER_WIDTH, 1);
                         }
 
-                        iconPickerPosition = GUILayout.Window(
+                        iconPickerPosition = ClickThruBlocker.GUILayoutWindow(
                             typeof(WaypointManager).FullName.GetHashCode() + 3,
                             iconPickerPosition,
                             IconPickerGUI,
@@ -326,7 +352,7 @@ namespace WaypointManager
                 }
                 else if (windowMode == WindowMode.Delete)
                 {
-                    rmWindowPos = GUILayout.Window(
+                    rmWindowPos = ClickThruBlocker.GUILayoutWindow(
                         typeof(WaypointManager).FullName.GetHashCode() + 2,
                         rmWindowPos,
                         DeleteGUI,
@@ -341,7 +367,7 @@ namespace WaypointManager
 
                 if (showExportDialog)
                 {
-                    expWindowPos = GUILayout.Window(
+                    expWindowPos = ClickThruBlocker.GUILayoutWindow(
                         typeof(WaypointManager).FullName.GetHashCode() + 3,
                         expWindowPos,
                         ExportGUI,

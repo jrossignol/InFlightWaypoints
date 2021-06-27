@@ -15,11 +15,19 @@ namespace WaypointManager
     [KSPAddon(KSPAddon.Startup.MainMenu, true)]
     public class CustomWaypoints : MonoBehaviour
     {
+        public static string CustomWaypointsDirectory
+        {
+            get
+            {
+                return string.Join(Path.DirectorySeparatorChar.ToString(), new string[] { KSPUtil.ApplicationRootPath, "GameData", "WaypointManager", "PluginData" });
+
+            }
+        }
         public static string CustomWaypointsFileName
         {
             get
             {
-                return string.Join(Path.DirectorySeparatorChar.ToString(), new string[] { KSPUtil.ApplicationRootPath, "GameData", "WaypointManager", "PluginData", "CustomWaypoints.cfg" });
+                return string.Join(CustomWaypointsDirectory, "CustomWaypoints.cfg");
             }
         }
 
@@ -124,18 +132,42 @@ namespace WaypointManager
             return "#" + c.r.ToString("X2") + c.g.ToString("X2") + c.b.ToString("X2");
         }
 
+        const string WAYPOINT_URL = "WAYPOINT";
+
         public static void Import()
         {
-            ConfigNode configNode = ConfigNode.Load(CustomWaypointsFileName);
-            if (configNode == null)
+            ConfigNode master = new ConfigNode("CUSTOM_WAYPOINTS");
+            int fileCount = 0, preload = 0;
+
+            ConfigNode configNode = null; ;
+            configNode = ConfigNode.Load(CustomWaypointsFileName);
+            fileCount = configNode.CountNodes;
+
+            if (configNode != null)
+            {
+                AddWaypointsFromConfig(master, configNode);
+            }
+
+            if (master.CountNodes == 0)
             {
                 ScreenMessages.PostScreenMessage(string.Format("Couldn't load custom waypoint file {0}!", CustomWaypointsFileName),
                     6.0f, ScreenMessageStyle.UPPER_CENTER);
                 return;
             }
 
-            ConfigNode master = new ConfigNode("CUSTOM_WAYPOINTS");
+            ScenarioCustomWaypoints.Instance.OnLoad(master);
 
+            int count = master.nodes.Count;
+            if (fileCount > 0)
+                ScreenMessages.PostScreenMessage("Imported " + fileCount + " waypoint" + (fileCount != 1 ? "s" : "") + " from " + CustomWaypointsFileName,
+                    6.0f, ScreenMessageStyle.UPPER_CENTER);
+            if (preload > 0)
+                ScreenMessages.PostScreenMessage("Imported " + preload + " preload" + (preload != 1 ? "s" : "") + " from pre-loaded configs",
+                    6.0f, ScreenMessageStyle.UPPER_CENTER);
+        }
+
+        internal static void AddWaypointsFromConfig(ConfigNode master, ConfigNode configNode)
+        {
             // Add the non-dupes into a new list
             foreach (ConfigNode child in configNode.GetNodes("WAYPOINT"))
             {
@@ -165,14 +197,7 @@ namespace WaypointManager
                     master.AddNode(child);
                 }
             }
-
-            ScenarioCustomWaypoints.Instance.OnLoad(master);
-
-            int count = master.nodes.Count;
-            ScreenMessages.PostScreenMessage("Imported " + count + " waypoint" + (count != 1 ? "s" : "") + " from " + CustomWaypointsFileName,
-                6.0f, ScreenMessageStyle.UPPER_CENTER);
         }
-
         public static void Export()
         {
             if (File.Exists(CustomWaypointsFileName))
